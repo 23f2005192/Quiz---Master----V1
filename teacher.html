@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ teacher.name }}'s Dashboard</title>
+</head>
+<body>
+    
+    <h1>Welcome, {{ teacher.name }}! Here's your dashboard.</h1>
+    <header>
+        <nav>
+            <a href="{{ url_for('new_quiz', userid=teacher.id) }}"> Quizz</a>
+        </nav>
+        </header>
+
+    <h2>Your Subjects</h2>
+    <ul>
+        {% for subject in subjects %}
+            <li>
+                <strong>{{ subject.name }}</strong><br>
+                <em>{{ subject.description }}</em><br>
+
+                <h4>Chapters</h4>
+                <ul>
+                    {% for chapter in subject.chapters %}
+                        <li><strong>{{ chapter.name }}</strong>: {{ chapter.description }}</li>
+                    {% endfor %}
+                </ul>
+
+               
+                <a href="{{ url_for('addchapter', user_id=teacher.id, subject_id=subject.id) }}">Add New Chapter</a>
+            </li>
+        {% endfor %}
+    </ul>
+
+
+    <a href="{{ url_for('addsubject') }}">Add New Subject</a>
+</body>
+</html>

@@ -1,7 +1,6 @@
 from flask import Flask,redirect,render_template,url_for,request,session
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-
 import secrets
 sk=secrets.token_hex(16)
 app=Flask(__name__)
@@ -27,6 +26,7 @@ class User(db.Model):
     usri=db.relationship("Quiz",back_populates="tid")
     #usr=relationship("Scores",back_populates="sc")
     tid=db.relationship('Subject',back_populates='teacher')
+    enrollid = db.relationship("Enrollment", back_populates="std")
 class Subject(db.Model):
     __tablename__ = "subject"
     id = db.Column(db.Integer, db.Sequence("subject_id_seq"), primary_key=True)
@@ -37,6 +37,7 @@ class Subject(db.Model):
     
     teacher=db.relationship('User',back_populates='tid')
     chapters=db.relationship('Chapter',back_populates='subject')
+    enrollsub = db.relationship("Enrollment", back_populates="subject")
 class Chapter(db.Model):
     __tablename__="chapter"
     id=db.Column(db.Integer,db.Sequence("chapter_id"),primary_key=True)
@@ -60,10 +61,38 @@ class Quiz(db.Model):
     chapter = db.relationship("Chapter", back_populates="quizs")
     tid=db.relationship("User",back_populates="usri")
     
-   # qui = db.relationship("Question", back_populates="quiz") 
+    qui = db.relationship("Question", back_populates="quiz")
+    
    # quizz = db.relationship("Scores", back_populates="quizz")
 
+class Question(db.Model):
+    __tablename__="question"
+    id=db.Column(db.Integer,db.Sequence("q"),primary_key=True)
+    qid=db.Column(db.Integer,db.ForeignKey("quiz.id"))
+    description=db.Column(db.String(100),nullable=False)
+    marks=db.Column(db.Integer,nullable=False)
+    quiz=db.relationship("Quiz",back_populates="qui")
+    options = db.relationship("Option", back_populates="question")
+    
+class Option(db.Model):
+    __tablename__="option"
+    
+    id=db.Column(db.Integer,db.Sequence("option_id_seq"),primary_key=True)
+    desc=db.Column(db.String(100),nullable=False)
 
+    qid=db.Column(db.Integer,db.ForeignKey("question.id"))
+    flag=db.Column(db.Boolean)
+   
+    question = db.relationship("Question", back_populates="options") 
+class Enrollment(db.Model):
+    __tablename__ = "enrollment"
+    id=db.Column(db.Integer,db.Sequence("enrollment_id_seq"),primary_key=True)
+   
+    sid = db.Column(db.Integer, db.ForeignKey("user.id")) 
+    subject_id = db.Column(db.Integer, db.ForeignKey("subject.id"))  
+  
+    std = db.relationship("User", back_populates="enrollid")
+    subject = db.relationship("Subject", back_populates="enrollsub")
     
 @app.route('/register',methods=['GET','POST'])
 def register():
@@ -127,10 +156,18 @@ def teacher(user_id):
 def student(user_id):
     if 'user_id' not in session or session['user_id'] != user_id:
         return redirect(url_for('login'))  
-    usr=User.query.get(user_id)
+    usr = User.query.get(user_id)
+
   
-    
-    return render_template('student.html',student=usr)
+    enrolled_subjects = Enrollment.query.filter_by(sid=user_id).all()
+
+    subjects = []
+    for enrollment in enrolled_subjects:
+        subject = Subject.query.get(enrollment.subject_id)
+        subjects.append(subject)
+
+    return render_template('student.html', student=usr, subjects=subjects)  
+
 @app.route('/addsubject', methods=['GET', 'POST'])
 def addsubject():
     if 'user_id' not in session:
@@ -171,6 +208,7 @@ def addchapter(subject_id,user_id):
         db.session.commit()
         return redirect(url_for('teacher',user_id=user_id))
     return render_template('nechapter.html',subject=sub)
+
 @app.route('/teacher/<int:userid>/new_quiz', methods=['GET', 'POST'])
 def new_quiz(userid):
     user = User.query.get(userid)
@@ -181,8 +219,25 @@ def new_quiz(userid):
     chapters = Chapter.query.filter_by(subject_id=chapter_id).all()  
     quizzes = Quiz.query.filter_by(aid=userid).all()
 
-
     return render_template('quiz.html', teacher=user, quiz=quizzes, chapters=chapters, chapter_id=chapter_id)
+
+
+@app.route('/quiz/<int:quiz_id>/questions')
+def questions(quiz_id):
+    quiz = Quiz.query.get(quiz_id)
+    if not quiz:
+        return "Quiz not found", 404
+
+    questions = Question.query.filter_by(qid=quiz_id).all()
+    '''if not questions:
+        print(f"No questions found for quiz_id {quiz_id}")
+        return "Error loading questions", 500'''
+
+    user = User.query.get(quiz.aid)
+
+    return render_template('question.html', quiz=quiz, questions=questions, user=user)
+
+
 
 
 
@@ -220,15 +275,36 @@ def add_quiz(userid):
         return redirect(url_for('new_quiz', userid=userid))
 
    
-    chapters = Chapter.query.filter_by(subject_id=userid).all()
-    return render_template('newquiz.html', teacher=user, chapters=chapters)
+    subject = Subject.query.filter_by(teacher_id=userid).all()
+    return render_template('newquiz.html', teacher=user, chapters=subject)
 @app.route('/quiz/<quiz_id>/add_question', methods=['GET', 'POST'])
 def add_question(quiz_id):
-    return "HI"
+    quiz = Quiz.query.get(quiz_id)
+    if not quiz:
+        return "Quiz not found", 404
+
+    if request.method == 'POST':
+        description = request.form['description']
+        marks = request.form['marks']
+        
+        new_question = Question(
+            qid=quiz.id,
+            description=description,
+            marks=marks
+        )
+
+        db.session.add(new_question)
+        db.session.commit()
+
+        return redirect(url_for('questions', quiz_id=quiz.id)) 
+
+    return render_template('newq.html', quiz_id=quiz_id)
+
+
+
 @app.route('/quiz/<quiz_id>/view_responses', methods=['GET', 'POST'])
 def view_responses(quiz_id):
     return "HI"
-
 @app.route('/quiz/<int:quiz_id>/delete', methods=['GET', 'POST'])
 def delete_quiz(quiz_id):
     quiz = Quiz.query.get(quiz_id)
@@ -238,35 +314,115 @@ def delete_quiz(quiz_id):
     if request.method == 'POST':
         confirm = request.form.get('confirm')
 
-        if confirm is None:
-            return "Error: No confirmation selected. Please choose 'Yes' or 'No'.", 400
-
         if confirm == 'yes':
+          
             db.session.delete(quiz)
             db.session.commit()
             return redirect(url_for('new_quiz', userid=quiz.aid))
 
-        return redirect(url_for('new_quiz', userid=quiz.aid))  
+        
+        return redirect(url_for('new_quiz', userid=quiz.aid))
 
+   
     return render_template('delete.html', quiz=quiz)
+@app.route('/addsub', methods=['GET', 'POST'])
+def addsub():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))  
+    user = User.query.get(session['user_id'])
 
+    if request.method == 'POST':
+        subject_id = request.form['name']  
+        
+        try:
+            
+            subject = Subject.query.filter_by(id=int(subject_id)).first()
 
+            if not subject:
+                return "Subject not found"  
 
+          
+            existing_enrollment = Enrollment.query.filter_by(sid=user.id, subject_id=subject.id).first()
+            if existing_enrollment:
+                return "You are already enrolled in this subject."
 
+          
+            new_enrollment = Enrollment(sid=user.id, subject_id=subject.id)
+            db.session.add(new_enrollment)
+            db.session.commit()
 
+            return redirect(url_for('student', user_id=user.id))  
 
+        except Exception as e:
+            return f"Error occurred: {e}"
+
+    return render_template('newsub.html')  
+@app.route('/quiz/<int:subject_id>', methods=['GET', 'POST'])
+def quiz(subject_id):
+    today = datetime.today().date()
+    
+   
+    quizzes = Quiz.query.filter(Quiz.cid == subject_id, Quiz.startdate >= today).all()
+    
+    return render_template('upcooming.html', quiz=quizzes, subject_id=subject_id)
+@app.route('/attempt')
+def attempt(id):
+    return "HI"
+@app.route("/edit_option")
+def edit_option(ID):
+        return "HI"
+@app.route("/delete_option")
+def delete_option(id):
+    return "HI"
+@app.route("/edit_question")
+def edit_question(ID):
+        return "HI"
+@app.route('/delete_question/<int:quiz_id>/<int:question_id>', methods=['GET', 'POST'])
+def delete_question(quiz_id, question_id):
+   
+   "return HI"
+    
+
+@app.route('/add_option/<int:question_id>', methods=['GET', 'POST'])
+def add_option(question_id):
+   
+    question = Question.query.get(question_id)
     
     
+    if request.method == 'POST':
+        option_desc = request.form.get('option_desc')
+        flag = request.form.get('flag') == 'on' 
+        
+       
+        new_option = Option(
+            desc=option_desc,
+            qid=question.id,
+            flag=flag
+        )
+        
+        
+        db.session.add(new_option)
+        db.session.commit()
+        return redirect(url_for('questions', quiz_id=question.id))
+    return render_template('addoption.html', question=question)
+
+
+   
+    
+   
+   
     
 
 
-    
+
+
+
 with app.app_context():
    
+
+ 
     
-    
-   
-    db.create_all()
+   db.create_all()
 
 
 if __name__=='__main__':

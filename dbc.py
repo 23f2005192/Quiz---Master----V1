@@ -14,9 +14,11 @@ class User(Base):
     password=Column(String(50),nullable=False)
     qualification=Column(String(50))
     dob=Column(Date,nullable=False)
-    usri=relationship("Quiz",back_populates="tid")
+    #usri=relationship("Quiz",back_populates="tid")
     usr=relationship("Scores",back_populates="sc")
     tid=relationship('Subject',back_populates='teacher')
+    enrollid = relationship("Enrollment", back_populates="std")
+    
     
 class Subject(Base):
     __tablename__ = "subject"
@@ -29,6 +31,7 @@ class Subject(Base):
     
     teacher=relationship('User',back_populates='tid')
     chapters=relationship('Chapter',back_populates='subject')
+    enrollsub = relationship("Enrollment", back_populates="subject")
 class Chapter(Base):
     __tablename__="chapter"
     id=Column(Integer,Sequence("chapter_id"),primary_key=True)
@@ -36,7 +39,7 @@ class Chapter(Base):
     description=Column(String(100))
     chapters=relationship("Quiz",back_populates="quizs")
     subject_id = Column(Integer, ForeignKey("subject.id"))
-    subject = relationship("Subject", back_populates="chapters")
+    subject = relationship("Subject", back_populates="subject")
 
 class Quiz(Base):
     __tablename__="quiz"
@@ -81,10 +84,28 @@ class Option(Base):
     __tablename__="option"
     
     id=Column(Integer,Sequence("option_id_seq"),primary_key=True)
-    opid=Column(Integer,nullable=False)
+    desc=Column(String(100),nullable=False)
     qid=Column(Integer,ForeignKey("quiz.id"))
     flag=Column(Boolean)
     quiz = relationship("Quiz", back_populates="options")
+class Enrollment(Base):
+    __tablename__ = "enrollment"
+    id=Column(Integer,Sequence("enrollment_id_seq"),primary_key=True)
+   
+    sid = Column(Integer, ForeignKey("user.id")) 
+    subject_id = Column(Integer, ForeignKey("subject.id"))  
+  
+    std = relationship("User", back_populates="enrollid")
+    subject = relationship("Subject", back_populates="enrollsub")
+ 
+
+
+Base.metadata.create_all(engine)
+
+s.commit()
+
+    
+    
     
 Base.metadata.create_all(engine)
 

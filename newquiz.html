@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Quiz</title>
+</head>
+<body>
+    <h1>Add New Quiz</h1>
+    
+    <form method="POST">
+        <div>
+            <label for="chapter_id">Select Chapter:</label>
+            <select id="chapter_id" name="chapter_id" required>
+                {% for chapter in chapters %}
+                    <option value="{{ chapter.id }}">{{ chapter.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="name">Quiz Name:</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+
+        <div>
+            <label for="description">Description:</label>
+            <input type="text" id="description" name="description">
+        </div>
+
+        <div>
+            <label for="startdate">Start Date:</label>
+            <input type="date" id="startdate" name="startdate" required>
+        </div>
+
+        <div>
+            <label for="enddate">End Date:</label>
+            <input type="date" id="enddate" name="enddate">
+        </div>
+
+        <div>
+            <label for="duration">Duration:</label>
+            <input type="time" id="duration" name="duration" required>
+        </div>
+
+        <button type="submit">Add Quiz</button>
+    </form>
+
+    <br>
+    <a href="{{ url_for('new_quiz', userid=session['user_id']) }}">Back to Quiz</a>
+
+</body>
+</html>

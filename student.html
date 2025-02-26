@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ student.name }}'s Dashboard</title>
+</head>
+<body>
+    <h1>Welcome, {{ student.name }}!</h1>
+
+    <h2>Your Subjects</h2>
+    <table border="2">
+        <thead>
+            <tr>
+                <th>Subject ID</th>
+                <th>Name</th>
+                <th>Teacher</th>
+                <th>Quiz</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in subjects %}
+                <tr>
+                    <td>{{ s.id }}</td>
+                    <td>{{ s.name }}</td>
+                    <td>{{ s.teacher.name }}</td>
+                    <td><button><a href="{{ url_for('quiz', subject_id=s.id) }}">Take Quiz</a></button></td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="4">No subjects available.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <br>
+    <a href="{{ url_for('addsub') }}">Add New Subject</a>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Your Quizzes</title>
+    </head>
+    <body>
+        <h2>Your Quizzes</h2>
+
+        <table border="2">
+            <thead>
+                <tr>
+                    <th>Quiz Name</th>
+                    <th>Description</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Duration</th>
+                    <th>Add Question</th>
+                    <th>View Responses</th>
+                    <th>Delete</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for q in quiz %}
+                    <tr>
+                        <td>{{ q.name }}</td>
+                        <td>{{ q.description if q.description else 'No description available' }}</td>
+                        <td>{{ q.startdate.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ q.enddate.strftime('%Y-%m-%d') if q.enddate else 'N/A' }}</td>
+                        <td>{{ q.dur }}</td>
+                        <td><button><a href="{{ url_for('questions', quiz_id=q.id) }}"> Question</a></button></td>
+                        <td><button><a href="{{ url_for('view_responses', quiz_id=q.id) }}">View Responses</a></button></td>
+                        <td>
+                            <form method="GET" action="{{ url_for('delete_quiz', quiz_id=q.id) }}">
+                                <button type="submit">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="8">No quizzes available.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <a href="{{ url_for('add_quiz', userid=session['user_id']) }}">Add New Quiz</a>
+
+    </body>
+</html>
