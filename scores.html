@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teacher Scores by Subject</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <h1>Teacher Scores by Subject</h1>
+  
+  <canvas id="subjectScoresChart" width="400" height="200"></canvas>
+
+  <script>
+    var ctx = document.getElementById('subjectScoresChart').getContext('2d');
+ 
+    var subjectNames = {{ subject_names|tojson }};
+    var teacherNames = {{ teacher_names|tojson }};
+    var maxScores = {{ max_scores|tojson }};
+    
+    console.log('Subject Names:', subjectNames);
+    console.log('Teacher Names:', teacherNames);
+    console.log('Max Scores:', maxScores);
+    
+    var subjectScoresChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: subjectNames,  // X-axis labels (subject names)
+        datasets: [{
+          label: 'Max Score in Subject',
+          data: maxScores,  // Y-axis values (max score)
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',  // Bar color
+          borderColor: 'rgb(124, 75, 192)',  // Border color
+          borderWidth: 1
+        }]
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        },
+        // Grouping by teacher using a custom tooltip function
+        tooltips: {
+          callbacks: {
+            title: function(tooltipItem) {
+              var index = tooltipItem[0].index;
+              return 'Teacher: ' + teacherNames[index];  // Display teacher name in tooltip
+            }
+          }
+        }
+      }
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Question - {{ quiz.name }}</title>
+    
+</head>
+<body>
+    <h2>Edit Question for {{ quiz.name }}</h2>
+
+    
+    <form action="{{ url_for('edit_question', quiz_id=quiz.id, question_id=question.id) }}" method="POST">
+        <div>
+            <label for="description">Question Description:</label>
+            <textarea id="description" name="description" required>{{ question.description }}</textarea>
+        </div>
+
+        <div>
+            <label for="marks">Marks:</label>
+            <input type="number" id="marks" name="marks" value="{{ question.marks }}" required min="1">
+        </div>
+
+        <button type="submit">Save Changes</button>
+    </form>
+
+
+    <a href="{{ url_for('questions', quiz_id=quiz.id) }}">Back to Question List</a>
+</body>
+</html>

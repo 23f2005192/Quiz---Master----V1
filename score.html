@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Result</title>
+</head>
+<body>
+    <div>
+        <h1>Quiz Result for {{ quiz.desc }}</h1>
+        <p>Student ID: {{ student_id }}</p>
+        <p>Total Score: {{ total_score }} / {{ max_score }}</p>
+
+        <p>
+            <a href="{{ url_for('student', user_id=student_id) }}">Go to Student Page</a>
+        </p>
+    </div>
+</body>
+</html>

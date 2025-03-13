@@ -4,11 +4,15 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Your Quizzes</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     </head>
-    <body>
+    <body class="bg-dark text-light">
+        <div class="text text-center ">
         <h2>Your Quizzes</h2>
+        </div>
+        <div class="container mt-5">
 
-        <table border="2">
+        <table class="table table-bordered border-primary ">
             <thead>
                 <tr>
                     <th>Quiz Name</th>
@@ -35,6 +39,27 @@
                             <form method="GET" action="{{ url_for('delete_quiz', quiz_id=q.id) }}">
                                 <button type="submit">Delete</button>
                             </form>
+                            <div class="modal fade" id="deleteQuestionModal" tabindex="-1" aria-labelledby="deleteQuestionModalLabel" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="deleteQuestionModalLabel">Delete Question</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <h2>Are you sure you want to delete the question: "<strong>{{ question.description }}</strong>"?</h2>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <form method="POST" action="{{ url_for('delete_question', question_id=question.id) }}">
+                                                <!-- Yes, Delete button -->
+                                                <button type="submit" class="btn btn-danger">Yes, Delete</button>
+                                            </form>
+                                            <!-- Cancel button, redirects back to the question list -->
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        </div>
+                                    </div>
+                                </div>
+                    
                         </td>
                     </tr>
                 {% else %}
@@ -44,8 +69,68 @@
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+    <div class="text text-center ">
 
-        <a href="{{ url_for('add_quiz', userid=session['user_id']) }}">Add New Quiz</a>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addQuizModal">Add Quiz</button>
+    </div>
+    
+    
+    <div class="modal fade" id="addQuizModal" tabindex="-1" aria-labelledby="addQuizModalLabel" aria-hidden="false">
+        <div class="modal-dialog" style="color: black;">
+            <div class="modal-content" style="color: black;">
+                <div class="modal-header" style="color: black;">
+                    <h5 class="modal-title" id="addQuizModalLabel" style="color: black;">Add New Quiz</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" style="color: black;">
+                    <form action="{{ url_for('add_quiz', userid=session['user_id']) }}" method="POST">
+                        <div class="mb-3">
+                            <label for="chapter_id">Select Subject:</label>
+                            <select id="chapter_id" name="chapter_id" required>
+                                {% if subject %}
+                                    {% for chapter in subject %}
+                                        <option value="{{ chapter.id }}">{{ chapter.name }}</option>
+                                    {% endfor %}
+                                {% else %}
+                                    <option>No chapters available</option>
+                                {% endif %}
+                            </select>
+                        </div>
+    
+                        <div class="mb-3">
+                            <label for="name">Quiz Name:</label>
+                            <input type="text" id="name" name="name" required>
+                        </div>
+    
+                        <div class="mb-3">
+                            <label for="description">Description:</label>
+                            <input type="text" id="description" name="description">
+                        </div>
+    
+                        <div class="mb-3">
+                            <label for="startdate">Start Date:</label>
+                            <input type="date" id="startdate" name="startdate" required>
+                        </div>
+    
+                        <div class="mb-3">
+                            <label for="enddate">End Date:</label>
+                            <input type="date" id="enddate" name="enddate">
+                        </div>
+    
+                        <div class="mb-3">
+                            <label for="duration">Duration:</label>
+                            <input type="time" id="duration" name="duration" required>
+                        </div>
+    
+                        <button type="submit" class="btn btn-primary">Add Quiz</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
 
     </body>
 </html>

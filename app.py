@@ -1,7 +1,12 @@
-from flask import Flask,redirect,render_template,url_for,request,session
+from flask import Flask,redirect,render_template,url_for,request,session,flash
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func
 from datetime import datetime
+
+
 import secrets
+
+
 sk=secrets.token_hex(16)
 app=Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///D:/python/project/quiz.db'
@@ -24,9 +29,13 @@ class User(db.Model):
     qualification=db.Column(db.String(50))
     dob=db.Column(db.Date,nullable=False)
     usri=db.relationship("Quiz",back_populates="tid")
-    #usr=relationship("Scores",back_populates="sc")
+    usr=db.relationship("Scores",back_populates="sc")
     tid=db.relationship('Subject',back_populates='teacher')
     enrollid = db.relationship("Enrollment", back_populates="std")
+    res=db.relationship("Response",back_populates="uid")
+    done1=db.relationship("Attempt", back_populates="si")
+    
+    
 class Subject(db.Model):
     __tablename__ = "subject"
     id = db.Column(db.Integer, db.Sequence("subject_id_seq"), primary_key=True)
@@ -38,6 +47,7 @@ class Subject(db.Model):
     teacher=db.relationship('User',back_populates='tid')
     chapters=db.relationship('Chapter',back_populates='subject')
     enrollsub = db.relationship("Enrollment", back_populates="subject")
+    
 class Chapter(db.Model):
     __tablename__="chapter"
     id=db.Column(db.Integer,db.Sequence("chapter_id"),primary_key=True)
@@ -62,8 +72,11 @@ class Quiz(db.Model):
     tid=db.relationship("User",back_populates="usri")
     
     qui = db.relationship("Question", back_populates="quiz")
+    res=db.relationship("Response",back_populates="q")
     
-   # quizz = db.relationship("Scores", back_populates="quizz")
+    
+    quizz = db.relationship("Scores", back_populates="sco")
+    done1=db.relationship("Attempt", back_populates="qi")
 
 class Question(db.Model):
     __tablename__="question"
@@ -73,7 +86,7 @@ class Question(db.Model):
     marks=db.Column(db.Integer,nullable=False)
     quiz=db.relationship("Quiz",back_populates="qui")
     options = db.relationship("Option", back_populates="question")
-    
+    done1=db.relationship("Attempt", back_populates="quest")
 class Option(db.Model):
     __tablename__="option"
     
@@ -84,6 +97,7 @@ class Option(db.Model):
     flag=db.Column(db.Boolean)
    
     question = db.relationship("Question", back_populates="options") 
+    done1=db.relationship("Attempt", back_populates="oid")
 class Enrollment(db.Model):
     __tablename__ = "enrollment"
     id=db.Column(db.Integer,db.Sequence("enrollment_id_seq"),primary_key=True)
@@ -93,7 +107,42 @@ class Enrollment(db.Model):
   
     std = db.relationship("User", back_populates="enrollid")
     subject = db.relationship("Subject", back_populates="enrollsub")
+class Response(db.Model):
+    __tablename__="response"
+    id=db.Column(db.Integer,db.Sequence("user_id_seq"),primary_key=True)
+    userid=db.Column(db.Integer,db.ForeignKey('user.id'))
+    qid=db.Column(db.Integer,db.ForeignKey("quiz.id"))
+    time=db.Column(db.Time)
+    q=db.relationship("Quiz",back_populates="res")
+    uid=db.relationship("User",back_populates="res")
+    attempts = db.relationship("Attempt", back_populates="response")
+class Attempt(db.Model):
+    __tablename__="attempt"
+    id=db.Column(db.Integer,db.Sequence("user_id_seq"),primary_key=True)
+    sid = db.Column(db.Integer, db.ForeignKey("user.id")) 
+    qid=db.Column(db.Integer,db.ForeignKey("quiz.id"))
+    question_id=db.Column(db.Integer,db.ForeignKey("question.id"))
+    option_id=db.Column(db.Integer,db.ForeignKey("option.id"))
+    response_id = db.Column(db.Integer, db.ForeignKey("response.id")) 
+    si = db.relationship("User", back_populates="done1")
+    qi=db.relationship("Quiz", back_populates="done1")
+    quest=db.relationship("Question", back_populates="done1")
+    oid=db.relationship("Option", back_populates="done1")
+    response = db.relationship("Response", back_populates="attempts")
     
+class Scores(db.Model):
+    __tablename__='score'
+    id=db.Column(db.Integer,db.Sequence("Score"),primary_key=True)
+    qid=db.Column(db.Integer,db.ForeignKey("quiz.id"))
+    userid=db.Column(db.Integer,db.ForeignKey('user.id'))
+   
+    score=db.Column(db.Integer)
+    maxscore=db.Column(db.Integer)
+    sc=db.relationship("User",back_populates="usr")
+    sco=db.relationship('Quiz',back_populates="quizz")
+
+
+
 @app.route('/register',methods=['GET','POST'])
 def register():
     if request.method=='POST':
@@ -217,21 +266,20 @@ def new_quiz(userid):
 
     chapter_id = request.args.get('chapter_id') 
     chapters = Chapter.query.filter_by(subject_id=chapter_id).all()  
+    subject = Subject.query.filter_by(teacher_id=userid).all()
     quizzes = Quiz.query.filter_by(aid=userid).all()
 
-    return render_template('quiz.html', teacher=user, quiz=quizzes, chapters=chapters, chapter_id=chapter_id)
+    return render_template('quiz.html', teacher=user, quiz=quizzes, chapters=chapters, chapter_id=chapter_id,subject=subject)
 
 
 @app.route('/quiz/<int:quiz_id>/questions')
 def questions(quiz_id):
     quiz = Quiz.query.get(quiz_id)
-    if not quiz:
-        return "Quiz not found", 404
+    '''if not quiz:
+        return "Quiz not found", 404'''#checking for redirection 
 
     questions = Question.query.filter_by(qid=quiz_id).all()
-    '''if not questions:
-        print(f"No questions found for quiz_id {quiz_id}")
-        return "Error loading questions", 500'''
+  
 
     user = User.query.get(quiz.aid)
 
@@ -304,7 +352,38 @@ def add_question(quiz_id):
 
 @app.route('/quiz/<quiz_id>/view_responses', methods=['GET', 'POST'])
 def view_responses(quiz_id):
-    return "HI"
+    scores = db.session.query(Scores, User).join(User).filter(Scores.qid == quiz_id).all()
+
+    
+    response_data = []
+    for score, user in scores:
+        response_data.append({
+            'student_id': user.id,
+            'name': user.name,
+            'score': score.score,
+            'max_score': score.maxscore
+        })
+
+    
+    return render_template('response.html', responses=response_data)
+@app.route('/quiz/<quiz_id>/response', methods=['GET', 'POST'])
+def response(quiz_id):
+    student_id = session.get('user_id') 
+    scores = db.session.query(Scores, User).join(User).filter(Scores.qid == quiz_id, Scores.userid == student_id).all()
+
+    
+    response_data = []
+    for score, user in scores:
+        response_data.append({
+            'student_id': user.id,
+            'name': user.name,
+            'score': score.score,
+            'max_score': score.maxscore
+        })
+
+    
+    return render_template('response.html', responses=response_data)
+
 @app.route('/quiz/<int:quiz_id>/delete', methods=['GET', 'POST'])
 def delete_quiz(quiz_id):
     quiz = Quiz.query.get(quiz_id)
@@ -362,25 +441,184 @@ def quiz(subject_id):
     today = datetime.today().date()
     
    
-    quizzes = Quiz.query.filter(Quiz.cid == subject_id, Quiz.startdate >= today).all()
+    quizzes = Quiz.query.filter(Quiz.cid == subject_id, Quiz.startdate <= today , Quiz.enddate>=today).all()
     
     return render_template('upcooming.html', quiz=quizzes, subject_id=subject_id)
-@app.route('/attempt')
-def attempt(id):
-    return "HI"
+
+@app.route('/quiz/<int:quiz_id>/start_quiz', methods=['GET', 'POST'])
+def start_quiz(quiz_id):
+    
+    student_id = session.get('user_id')  
+    
+    if student_id is None:
+        return redirect(url_for('login'))  
+  
+    quiz = Quiz.query.get_or_404(quiz_id)
+
+   
+    if request.method == 'POST':
+        current_time = datetime.now().time()
+
+      
+        response = Response(
+            userid=student_id,  
+            qid=quiz_id, 
+            time=current_time  
+        )
+
+       
+        db.session.add(response)
+        db.session.commit()
+
+       
+        return redirect(url_for('take_quiz', quiz_id=quiz_id,response_id=response.id))
+
+    
+    return render_template('start.html', quiz=quiz, student_id=student_id)
+
+
+   
+@app.route("/take_quiz/<int:quiz_id>/<int:response_id>", methods=["GET", "POST"])
+def take_quiz(quiz_id,response_id ):
+    
+    quiz = Quiz.query.get_or_404(quiz_id)
+    
+    
+    questions = Question.query.filter_by(qid=quiz_id).all()
+    
+   
+    student_id = session.get('user_id')   
+
+    if request.method == "POST":
+   
+        for question in questions:
+            option_id = request.form.get(str(question.id))  
+
+           
+            if option_id:
+                new_attempt = Attempt(
+                    sid=student_id,  
+                    qid=quiz.id,  
+                    question_id=question.id,  
+                    option_id=option_id,  
+                    response_id=response_id 
+                )
+                db.session.add(new_attempt)
+
+        db.session.commit()
+        return redirect(url_for('quiz_result', quiz_id=quiz_id,student_id=student_id))  
+
+    return render_template("attempt.html", quiz=quiz, questions=questions)
+
+
+ 
+@app.route('/quiz_result/<int:quiz_id>/<int:student_id>', methods=['GET'])
+def quiz_result(quiz_id, student_id):
+    quiz = Quiz.query.get(quiz_id) 
+    questions = Question.query.filter_by(qid=quiz_id).all()  
+
+    total_score = 0
+    max_score = 0
+
+     
+
+    for question in questions:
+      
+        attempt = Attempt.query.filter_by(qid=quiz_id, sid=student_id, question_id=question.id).order_by(Attempt.id.desc()).first()
+
+        if attempt:
+          
+            correct_option = Option.query.filter_by(qid=question.id, flag=True).first()
+            if attempt.option_id == correct_option.id:  
+                total_score += question.marks
+        
+        max_score += question.marks  
+   
+    score_entry = Scores(
+        qid=quiz_id,
+        userid=student_id,
+        
+        score=total_score,
+        maxscore=max_score
+    )
+    db.session.add(score_entry)
+    db.session.commit()  
+
+    return render_template('score.html', quiz=quiz, total_score=total_score, max_score=max_score, student_id=student_id)
+
+
 @app.route("/edit_option")
 def edit_option(ID):
         return "HI"
-@app.route("/delete_option")
-def delete_option(id):
-    return "HI"
-@app.route("/edit_question")
-def edit_question(ID):
-        return "HI"
+@app.route("/delete_option/<int:question_id>/<int:option_id>/<int:quiz_id>",methods=['GET','POST'])
+def delete_option(question_id, option_id, quiz_id):
+    if request.method == 'POST':
+        option_to_delete = Option.query.get(option_id)
+        
+        if option_to_delete:
+            db.session.delete(option_to_delete)
+            db.session.commit()
+            flash("Option deleted successfully!", "success")
+        else:
+            flash("Option not found!", "error")
+
+        return redirect(url_for('questions', quiz_id=quiz_id))
+
+    quiz = Quiz.query.get(quiz_id)
+    question = Question.query.get(question_id)
+    
+    if not quiz or not question:
+        flash("Quiz or Question not found!", "error")
+        return redirect(url_for('quiz_list'))
+    
+    return render_template('delop.html', quiz=quiz, question=question,quiz_id=quiz_id)
+    
+@app.route("/edit_question/<int:quiz_id>/<int:question_id>",methods=['GET','POST'])
+def edit_question(quiz_id, question_id):
+    if request.method == 'POST':
+        question_to_edit = Question.query.get(question_id)
+        
+        if question_to_edit:
+            
+            new_description = request.form.get('description')
+            new_marks = request.form.get('marks')
+            
+            
+            question_to_edit.description = new_description
+            question_to_edit.marks = int(new_marks)  
+            
+          
+            db.session.commit()
+            
+            flash("Question edited successfully!", "success")
+            
+           
+            return redirect(url_for('questions', quiz_id=quiz_id))
+        else:
+            flash("Question not found!", "danger")
+            return redirect(url_for('questions', quiz_id=quiz_id))
+
+   
+    quiz = Quiz.query.get(quiz_id)
+    question = Question.query.get(question_id)
+    return render_template('editq.html', quiz=quiz, question=question)
+        
 @app.route('/delete_question/<int:quiz_id>/<int:question_id>', methods=['GET', 'POST'])
 def delete_question(quiz_id, question_id):
    
-   "return HI"
+    if request.method == 'POST':
+        
+        question_to_delete = Question.query.get(question_id)
+        if question_to_delete:
+            db.session.delete(question_to_delete)
+            db.session.commit()
+            flash("Question deleted successfully!", "success")
+            return redirect(url_for('questions', quiz_id=quiz_id))  
+        
+  
+    quiz = Quiz.query.get(quiz_id)
+    question = Question.query.get(question_id)
+    return render_template('delq.html', quiz=quiz, question=question)
     
 
 @app.route('/add_option/<int:question_id>', methods=['GET', 'POST'])
@@ -403,8 +641,78 @@ def add_option(question_id):
         
         db.session.add(new_option)
         db.session.commit()
-        return redirect(url_for('questions', quiz_id=question.id))
+        return redirect(url_for('questions', quiz_id=question.qid))
     return render_template('addoption.html', question=question)
+@app.route('/teacher/enrolled_students/<int:teacher_id>')
+def enrolled_students(teacher_id):
+    teacher = User.query.get(teacher_id)
+    if not teacher:
+        flash("Teacher not found!", "danger")
+        return redirect(url_for('login')) 
+    
+    subjects = Subject.query.filter_by(teacher_id=teacher.id).all()
+
+    students = []
+    for subject in subjects:
+        for enrollment in subject.enrollsub:
+            student = User.query.get(enrollment.sid)
+            students.append(student)
+    
+    return render_template('enrolled.html', teacher=teacher, students=students)
+@app.route('/pastquiz/<int:subject_id>', methods=['GET', 'POST'])
+def pastquiz(subject_id):
+    today = datetime.today().date()
+    
+   
+    quizzes = Quiz.query.filter(Quiz.cid == subject_id, Quiz.startdate < today).all()
+    
+    return render_template('pastq.html', quiz=quizzes, subject_id=subject_id)
+@app.route('/dashboard', methods=['GET', 'POST'])
+def dashboard():
+    
+    teacher = User.query.get(session['user_id'])  
+    subjects = teacher.tid
+
+    query = request.args.get('query', '')
+
+  
+    students = User.query.filter(User.name.ilike(f'%{query}%')).all() if query else []
+    subjects_search = Subject.query.filter(Subject.name.ilike(f'%{query}%')).all() if query else []
+    quizzes = Quiz.query.filter(Quiz.name.ilike(f'%{query}%')).all() if query else []
+
+    return render_template('teacher.html', teacher=teacher, subjects=subjects, 
+                           students=students, subjects_search=subjects_search, quizzes=quizzes)
+
+
+@app.route('/teacher_scores')
+def teacher_scores():
+        # Query to fetch subject names, max scores and teacher names
+        subjects_data = db.session.query(
+            Subject.name.label("subject_name"),
+            User.name.label("teacher_name"),
+            func.max(Scores.score).label("max_score")
+        ).join(User, User.id == Subject.teacher_id) \
+        .join(Quiz, Quiz.cid == Subject.id) \
+        .join(Scores, Scores.qid == Quiz.id) \
+        .group_by(Subject.id, User.id).all()
+
+        # Preparing data for Chart.js
+        subject_names = [subject.subject_name for subject in subjects_data]
+        teacher_names = [subject.teacher_name for subject in subjects_data]
+        max_scores = [subject.max_score for subject in subjects_data]
+
+        return render_template('scores.html', 
+                            subject_names=subject_names,
+                            teacher_names=teacher_names,
+                            max_scores=max_scores)
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
+
+
+
+
 
 
    
@@ -420,8 +728,8 @@ def add_option(question_id):
 with app.app_context():
    
 
- 
-    
+  
+  
    db.create_all()
 
 

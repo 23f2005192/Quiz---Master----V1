@@ -18,6 +18,7 @@ class User(Base):
     usr=relationship("Scores",back_populates="sc")
     tid=relationship('Subject',back_populates='teacher')
     enrollid = relationship("Enrollment", back_populates="std")
+    done=relationship("Attempt", back_populates="si")
     
     
 class Subject(Base):
@@ -55,6 +56,9 @@ class Quiz(Base):
     qui = relationship("Question", back_populates="quiz") 
     quizz = relationship("Scores", back_populates="quizz")
     tid=relationship("User",back_populates="usri")
+    res=relationship("Response",back_populates="q")
+    done=relationship("Attempt", back_populates="qi")
+    
     
 class Question(Base):
     __tablename__="question"
@@ -64,6 +68,8 @@ class Question(Base):
     marks=Column(Integer,nullable=False)
     quiz=relationship("Question",back_populates="qui")
     tid=relationship("User",back_populates='usri')
+    done=relationship("Attempt", back_populates="quest")
+    
 class Scores(Base):
     __tablename__='score'
     id=Column(Integer,Sequence("Score"),primary_key=True)
@@ -78,8 +84,9 @@ class Response(Base):
     __tablename__="response"
     id=Column(Integer,Sequence("user_id_seq"),primary_key=True)
     userid=Column(Integer,ForeignKey('user.id'))
-    opid=Column(Integer,ForeignKey("option.opid"))
+    qid=Column(Integer,ForeignKey("quiz.id"))
     time=Column(Time)
+    q=relationship("Quiz",back_populates="res")
 class Option(Base):
     __tablename__="option"
     
@@ -88,6 +95,9 @@ class Option(Base):
     qid=Column(Integer,ForeignKey("quiz.id"))
     flag=Column(Boolean)
     quiz = relationship("Quiz", back_populates="options")
+    done=relationship("Attempt", back_populates="oid")
+    
+    
 class Enrollment(Base):
     __tablename__ = "enrollment"
     id=Column(Integer,Sequence("enrollment_id_seq"),primary_key=True)
@@ -97,7 +107,21 @@ class Enrollment(Base):
   
     std = relationship("User", back_populates="enrollid")
     subject = relationship("Subject", back_populates="enrollsub")
- 
+class Attempt(Base):
+    __tablename__="attempt"
+    id=Column(Integer,Sequence("user_id_seq"),primary_key=True)
+    sid = Column(Integer, ForeignKey("user.id")) 
+    qid=Column(Integer,ForeignKey("quiz.id"))
+    question_id=Column(Integer,ForeignKey("question.id"))
+    option_id=Column(Integer,ForeignKey("option.id"))
+    si = relationship("User", back_populates="done")
+    qi=relationship("Quiz", back_populates="done")
+    quest=relationship("Question", back_populates="done")
+    oid=relationship("Option", back_populates="done")
+    
+    
+
+     
 
 
 Base.metadata.create_all(engine)
