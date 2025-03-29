@@ -1,17 +1,134 @@
-<form method="POST">
-    <h2>{{ quiz.title }}</h2>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ quiz.title }}</title>
+
     
-    {% for question in questions %}
-    <div class="question">
-        <p>{{  question.description }}</p>
-        {% for option in question.options %}
-        <label>
-            <input type="radio" name="{{ question.id }}" value="{{ option.id }}">
-            {{ option.desc }}
-        </label><br>
-        {% endfor %}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        #timer {
+            font-size: 30px;
+            font-weight: bold;
+            color: red;
+        }
+    </style>
+</head>
+<body class="bg-dark text-light">
+    <div class="logout-btn">
+        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#logoutModal">Logout</button>
     </div>
-    {% endfor %}
-    
-    <button type="submit">Submit Quiz</button>
-</form>
+    <div class="mt-4" style="text-align: left;">
+        <h4 id="timer" class="text-danger"></h4>
+    </div>
+ <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+        <div class="modal-dialog" style="color: black;">
+            <div class="modal-content" style="color: black;">
+                <div class="modal-header" style="color: black;">
+                    <h5 class="modal-title" id="logoutModalLabel">Confirm Logout</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to logout?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <a href="{{ url_for('logout') }}" class="btn btn-danger">Yes, Logout</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-5">
+        <h2 class="text-center mb-4">{{ quiz.title }}</h2>
+
+        <form method="POST">
+            <div class="row">
+                {% for question in questions %}
+                <div class="col-12 mb-4">
+                    <div class="question p-3 border rounded shadow-sm">
+                        <p><strong>{{ question.description }}</strong></p>
+                        <div class="form-check">
+                            {% for option in question.options %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="{{ question.id }}" value="{{ option.id }}" id="option{{ option.id }}">
+                                <label class="form-check-label" for="option{{ option.id }}">
+                                    {{ option.desc }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+         
+          
+
+           
+            <div class="text-center mt-4">
+                <button type="submit" class="btn btn-primary btn-lg">Submit Quiz</button>
+            </div>
+        </form>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        
+        const quizDuration = "{{ quiz_duration }}"; 
+        
+        function convertDurationToMinutes(duration) {
+            const [hours, minutes] = duration.split(':').map(Number);
+            return hours * 60 + minutes; 
+        }
+
+       
+        const totalMinutes = convertDurationToMinutes(quizDuration);
+
+      
+        const expiryTime = new Date().getTime() + totalMinutes * 60000; 
+
+        let alert10MinDisplayed = false;
+        let alert5MinDisplayed = false;
+
+        function startTimer() {
+            const timerElement = document.getElementById('timer');
+            const interval = setInterval(function () {
+                const now = new Date().getTime();
+                const timeLeft = expiryTime - now;
+
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    timerElement.innerHTML = "Time's up!";
+                    document.querySelector("form").submit(); 
+                } else {
+                    const minutes = Math.floor(timeLeft / (1000 * 60));
+                    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                    timerElement.innerHTML = minutes + "m " + seconds + "s"; 
+                   
+                    if (minutes === 10 && !alert10MinDisplayed) {
+                        alert("Only 10 minutes left!");
+                        alert10MinDisplayed = true;
+                    }
+
+                    
+                    if (minutes === 5 && !alert5MinDisplayed) {
+                        alert("Only 5 minutes left!");
+                        alert5MinDisplayed = true;
+                    }
+                }
+            }, 1000);
+        }
+
+        
+        window.onload = function () {
+            startTimer();
+        };
+    </script>
+
+</body>
+</html>
